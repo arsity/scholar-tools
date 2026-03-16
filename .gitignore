@@ -1,0 +1,8 @@
+# Secrets
+skills/research/.env
+
+# macOS
+.DS_Store
+
+# Research workspace (generated at runtime)
+.research-workspace/
