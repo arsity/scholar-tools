@@ -1,6 +1,6 @@
 # research-skill
 
-A Claude Code plugin for academic research. `/research survey "topic"` searches multiple databases in parallel, ranks papers by venue quality and citations, and lets you deep-read the ones that matter. `/research cite` generates verified BibTeX. Every citation traces to an API call, never to model memory.
+A Claude Code plugin for academic research with domain-aware skill routing. `/research discover "topic"` searches multiple databases in parallel, ranks papers by venue quality and citations, quick-reads the top results, and provides a landscape summary. `/research discuss` drives deep research ideation with adversarial novelty checks and reviewer simulation. `/research cite` generates verified BibTeX. Every citation traces to an API call, never to model memory.
 
 <p>
   <img src="https://img.shields.io/badge/Claude_Code-black?style=flat-square&logo=anthropic&logoColor=white" alt="Claude Code">
@@ -11,14 +11,45 @@ A Claude Code plugin for academic research. `/research survey "topic"` searches 
 
 | Command | What happens |
 |---------|-------------|
-| `/research survey "topic"` | Parallel search across Semantic Scholar + HF + AlphaXiv, deduplicate, score by venue/citations/h-index, triage, then deep-read selected papers |
-| `/research discover "topic"` | Search only — multi-source discovery with quality ranking |
-| `/research triage` | Quick-screen candidates from a previous discovery |
-| `/research read 2401.12345` | Deep structured analysis of a single paper |
-| `/research cite 2401.12345` | Verified BibTeX via DBLP > CrossRef > S2 chain |
-| `/research cite "paper title"` | Same, by title lookup |
-| `/research write introduction` | Write a paper section with verified citations (LaTeX/Markdown) |
-| `/research trending` | Personalized digest of today's trending papers |
+| `/research discover "topic"` | Parallel search across S2 + HF + AlphaXiv, deduplicate, quality-rank, quick-read top papers, generate landscape summary |
+| `/research discuss` | Deep discussion: assumption surfacing, adversarial novelty check, reviewer simulation, significance test, experiment design |
+| `/research discuss <paper>` | Start discussion from a specific paper |
+| `/research read <paper>` | Deep structured analysis with domain expert perspective |
+| `/research cite <paper>` | Verified BibTeX via DBLP > CrossRef > S2 chain |
+| `/research write <section>` | Write a paper section with Triple Review Gate (abstract/intro) + Consistency Check (method/experiments/conclusion) |
+| `/research trending` | Personalized digest of today's trending papers with domain skill insights |
+
+All commands support `--domain <categories>` (additive) or `--domain-only <categories>` (exclusive) to override auto-detected domain skills.
+
+## Skill Router
+
+The central innovation: a **Skill Router** maps paper content to 21 domain skill categories from [Orchestra-Research/AI-Research-SKILLs](https://github.com/Orchestra-Research/AI-Research-SKILLs), injecting expert knowledge into each phase.
+
+| # | Category | Example Skills |
+|---|----------|---------------|
+| 1 | Model-Architecture | litgpt, mamba, nanogpt, rwkv, torchtitan |
+| 2 | Tokenization | huggingface-tokenizers, sentencepiece |
+| 3 | Fine-Tuning | axolotl, llama-factory, peft, unsloth |
+| 4 | Mechanistic-Interpretability | transformer-lens, saelens, pyvene, nnsight |
+| 5 | Data-Processing | ray-data, nemo-curator |
+| 6 | Post-Training | trl, grpo-rl-training, openrlhf, simpo, verl |
+| 7 | Safety-Alignment | constitutional-ai, llamaguard, nemo-guardrails |
+| 8 | Distributed-Training | megatron-core, deepspeed, pytorch-fsdp2, accelerate |
+| 9 | Infrastructure | modal, skypilot, lambda-labs |
+| 10 | Optimization | flash-attention, bitsandbytes, gptq, awq, hqq, gguf |
+| 11 | Evaluation | lm-evaluation-harness, bigcode-evaluation-harness |
+| 12 | Inference-Serving | vllm, tensorrt-llm, llama.cpp, sglang |
+| 13 | MLOps | weights-and-biases, mlflow, tensorboard |
+| 14 | Agents | langchain, llamaindex, crewai, autogpt |
+| 15 | RAG | chroma, faiss, sentence-transformers, pinecone, qdrant |
+| 16 | Prompt-Engineering | dspy, instructor, guidance, outlines |
+| 17 | Observability | langsmith, phoenix |
+| 18 | Multimodal | clip, whisper, llava, stable-diffusion, segment-anything |
+| 19 | Emerging-Techniques | moe-training, model-merging, long-context, speculative-decoding |
+| 20 | ML-Paper-Writing | ml-paper-writing (auto-invoked in write phase) |
+| 21 | Research-Ideation | brainstorming-research-ideas, creative-thinking-for-research |
+
+The router auto-detects relevant categories from paper keywords and classifies them as **primary** (core contribution) or **secondary** (peripheral tool).
 
 ## How search works
 
@@ -41,7 +72,23 @@ Results are deduplicated by arXiv ID / DOI / title similarity, then scored:
 
 arXiv-only papers with < 100 citations get a -20 penalty. Published versions are preferred.
 
-Optional expansion: citation graph traversal (`s2_citations.sh`, `s2_references.sh`) and recommendation (`s2_recommend.sh`).
+After scoring, each top paper is **quick-read** (overview via AlphaXiv or abstract) and receives a verdict: Must read / Worth reading / Skim / Skip. A **landscape summary** synthesizes key themes and trends.
+
+## How discussion works
+
+The discuss phase is a 9-sub-phase ideation engine:
+
+1. **Setup** — load discover/read results, invoke skill router + research-ideation skills
+2. **Assumption Surfacing** — challenge inherited conventions in the field
+3. **Discussion Loop** — iterative analysis with auto knowledge gap filling and out-of-domain search
+4. **Adversarial Novelty Check** — verify proposed directions against existing literature
+5. **Reviewer Simulation** — generate specific reviewer objections with severity ratings
+6. **Significance Test** — 3-tier assessment (real-world impact, community impact, improvement magnitude)
+7. **Simplicity Test** — can the idea be explained in 2 sentences without jargon?
+8. **Experiment Design** — baselines, datasets, ablations, expected results, compute requirements
+9. **Convergence Decision** — direction comparison matrix backed by evidence
+
+Output: a structured **research brief** (`brief.json`) that feeds into the write phase.
 
 ## How citations work
 
@@ -55,6 +102,13 @@ Zero hallucination policy. Every BibTeX entry must trace to an API response. The
 ```
 
 Never generates BibTeX from model memory. Never fills in year/venue/authors from model knowledge.
+
+## How writing works
+
+The write phase adds two quality mechanisms:
+
+- **Triple Review Gate** (abstract + introduction): Three perspectives (Reviewer, AC/SAC, Senior Researcher) each provide 2-3 specific revision suggestions
+- **Consistency Check** (method, experiments, conclusion): Cross-reference scan ensures contributions match experiments, claims match results, assumptions match setup
 
 ## Installation
 
@@ -80,7 +134,7 @@ git clone https://github.com/arsity/research-skill.git ~/.claude/plugins/researc
 
 2. **Required plugins:**
    - `tanwei/pua` — provides `high-agency` and `pua-en` skills
-   - `Orchestra-Research/AI-Research-SKILLs` — provides `ml-paper-writing` skill
+   - `Orchestra-Research/AI-Research-SKILLs` — provides `ml-paper-writing`, `brainstorming-research-ideas`, `creative-thinking-for-research`, and 21 domain skill categories
    - A `humanizer` skill for style review during paper writing
 
 **Optional MCP servers:**
@@ -94,15 +148,16 @@ Without MCP servers, citations and quality evaluation still work. You just get f
 
 ```
 skills/research/
-  SKILL.md                  # Orchestrator — intent detection + routing
+  SKILL.md                  # Orchestrator — intent detection + routing + unified input parsing
   .env.example              # API key template
   phases/
-    discover.md             # Multi-source parallel search + merge + quality eval
-    triage.md               # Quick screening via AlphaXiv overviews
-    read.md                 # Deep structured analysis
+    skill-router.md         # Central domain detection + skill routing (21 categories)
+    discover.md             # Multi-source search + quick-read + landscape summary
+    discuss.md              # 9-phase ideation engine with adversarial checks
+    read.md                 # Deep structured analysis with domain expert perspective
     cite.md                 # DBLP > CrossRef > S2 BibTeX chain
-    write.md                # Paper section writing (LaTeX/Markdown/Notion)
-    trending.md             # Personalized trending digest
+    write.md                # Paper writing with Triple Review Gate + Consistency Check
+    trending.md             # Personalized trending digest with domain insights
   scripts/                  # 18 self-contained bash scripts
     init.sh                 # Env loading, rate limit helpers
     s2_search.sh            # S2 relevance-ranked search
@@ -126,8 +181,9 @@ skills/research/
     ccf_2026.sqlite         # CCF rankings database (682 entries)
     ccf_2026.jsonl          # CCF rankings source
     impact_factor.sqlite3   # Impact factor database (19,727 journals)
-  tests/                    # 8 test suites + runner
+  tests/                    # 9 test suites + runner
     run_all_tests.sh
+    test_structure.sh       # Structural validation (phase files, categories, migrations)
     test_s2_search.sh
     test_s2_network.sh
     test_s2_batch.sh
@@ -148,19 +204,33 @@ Requires a Semantic Scholar API key in `skills/research/.env`. Tests hit live AP
 
 ## Workspace
 
-On first invocation, `/research` creates `.research-workspace/` in the current directory. Each survey gets its own session with discover results, triage verdicts, read analyses, and verified BibTeX — all persisted as JSON for reuse across phases.
+On first invocation, `/research` creates `.research-workspace/` in the current directory. Each session persists discover results, discussion briefs, read analyses, and verified BibTeX — all as JSON for reuse across phases.
 
 ```
 .research-workspace/
   state.json
   sessions/
     {topic-slug}-{date}/
-      discover.json
-      triage.json
-      read/{paper_id}.json
-      cite/{paper_id}.bib
-      cite/cite-log.json
+      discover.json           # Search results + verdicts + landscape summary
+      discuss/
+        brief.json            # Research brief from discuss phase
+      read/{paper_id}.json    # Structured paper analyses
+      cite/{paper_id}.bib     # Verified BibTeX entries
+      cite/cite-log.json      # Citation metadata and sources
 ```
+
+## Iron Rules
+
+1. **Zero hallucination citations** — every citation from an API call, never from model memory
+2. **BibTeX priority** — DBLP > CrossRef > S2
+3. **High-agency preload** — loaded at skill start, drives exhaustive search and retry
+4. **Quality gate** — no paper presented without quality evaluation
+5. **Source tracing** — every citation tagged with data source
+6. **Own model for analysis** — never rely on AlphaXiv's AI-generated answers
+7. **Domain skill grounding** — factual claims must trace to paper content, not skill-generated assertions
+8. **Adversarial before commitment** — no direction finalized without novelty check
+9. **Triple review for framing** — abstract and introduction must pass three review perspectives
+10. **Simplicity preference** — between two approaches of similar merit, prefer the simpler one
 
 ## Rate limits
 
