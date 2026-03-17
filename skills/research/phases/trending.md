@@ -48,6 +48,20 @@ Matching logic:
 
 Sort: High-relevance first, then Medium, then Low. Within each tier, sort by upvotes (descending).
 
+### Step 3.5: Domain Skill Enhancement
+
+For each paper in the High relevance tier, invoke the skill router:
+- Input: paper title + summary as `paper_metadata`
+- Phase type: `trending`
+- Router returns top 1 primary category only (lightweight)
+
+Use the matched domain skill to generate a one-sentence expert assessment beyond the generic relevance tier. For high-tier papers, add significance context: why this matters for the field and how it connects to the user's specific research directions.
+
+Add to the paper presentation:
+```
+Domain insight: [one-sentence expert assessment from domain skill]
+```
+
 ### Step 4: Present digest
 
 For each paper:

@@ -17,9 +17,10 @@ Called via `/research cite 2401.12345` or `/research cite "paper title"`, or aut
 
 ### Step 1: Resolve paper identity
 
-If given an arXiv ID: search by ID.
-If given a title: search by title.
-If given a DOI: use directly for CrossRef.
+Use unified input parsing (defined in SKILL.md):
+- arXiv ID → search by ID
+- DOI → use directly for CrossRef
+- Free text → `s2_match.sh` exact match first, then `s2_search.sh` + `dblp_search.sh` with clarify flow if multiple candidates
 
 ### Step 2: BibTeX source chain
 
