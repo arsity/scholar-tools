@@ -1,0 +1,38 @@
+{
+  "name": "research-skill",
+  "owner": {
+    "name": "arsity",
+    "url": "https://github.com/arsity"
+  },
+  "metadata": {
+    "description": "A Claude Code plugin marketplace for academic research skills.",
+    "version": "1.0.0"
+  },
+  "plugins": [
+    {
+      "name": "research-skill",
+      "description": "Unified academic research lifecycle skill: literature discovery via Semantic Scholar/DBLP/CrossRef, paper triage with venue quality evaluation (CCF/IF), deep reading with AlphaXiv, citation management with BibTeX, research writing, and trending paper monitoring.",
+      "version": "1.0.0",
+      "source": "./",
+      "author": {
+        "name": "arsity",
+        "url": "https://github.com/arsity"
+      },
+      "category": "research",
+      "tags": [
+        "academic",
+        "research",
+        "literature-review",
+        "citation",
+        "paper-reading",
+        "semantic-scholar",
+        "arxiv"
+      ],
+      "strict": false,
+      "homepage": "https://github.com/arsity/research-skill",
+      "skills": [
+        "./skills/research"
+      ]
+    }
+  ]
+}
