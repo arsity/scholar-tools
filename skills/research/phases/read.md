@@ -28,8 +28,8 @@ The router returns primary domain skills. These are loaded and provide expert pe
 
 Follow this fallback chain (stop at the first that provides sufficient content):
 
-1. **AlphaXiv overview** — `curl -s "https://alphaxiv.org/overview/{ID}.md"` — structured AI-generated overview, optimized for LLM consumption
-2. **AlphaXiv full text** — `curl -s "https://alphaxiv.org/abs/{ID}.md"` — full extracted paper text (use if overview is 404 or lacks needed detail)
+1. **AlphaXiv overview** — `curl -sL "https://alphaxiv.org/overview/{ID}.md"` — structured AI-generated overview, optimized for LLM consumption
+2. **AlphaXiv full text** — `curl -sL "https://alphaxiv.org/abs/{ID}.md"` — full extracted paper text (use if overview is 404 or lacks needed detail)
 3. **arXiv PDF** — download from `https://arxiv.org/pdf/{ID}` and read directly (if both alphaxiv endpoints return 404)
 4. **Conference/publisher PDF** — for non-arXiv papers:
    - S2 `openAccessPdf` field

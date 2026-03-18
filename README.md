@@ -71,7 +71,7 @@ Results are deduplicated by arXiv ID / DOI / title similarity, then scored:
 
 arXiv-only papers with < 100 citations get a -20 penalty. Published versions are preferred.
 
-After scoring, each top paper is **quick-read** via `curl https://alphaxiv.org/overview/{id}.md` (or S2 abstract if not on arXiv) and receives a verdict: Must read / Worth reading / Skim / Skip. A **landscape summary** synthesizes key themes and trends.
+After scoring, each top paper is **quick-read** via `curl -sL https://alphaxiv.org/overview/{id}.md` (or S2 abstract if not on arXiv) and receives a verdict: Must read / Worth reading / Skim / Skip. A **landscape summary** synthesizes key themes and trends.
 
 ## How discussion works
 

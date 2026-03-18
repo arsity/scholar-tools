@@ -123,8 +123,8 @@ For top N papers by composite score (highest first):
 
 **For arXiv papers:**
 
-1. `curl -s "https://alphaxiv.org/overview/{arxiv_id}.md"` — structured overview (preferred)
-2. `curl -s "https://alphaxiv.org/abs/{arxiv_id}.md"` — full text (if overview is 404 or more detail needed)
+1. `curl -sL "https://alphaxiv.org/overview/{arxiv_id}.md"` — structured overview (preferred)
+2. `curl -sL "https://alphaxiv.org/abs/{arxiv_id}.md"` — full text (if overview is 404 or more detail needed)
 3. If both return 404: use S2 abstract from discover results
 
 **For non-arXiv papers (conference-only):**
