@@ -48,6 +48,30 @@ else
     FAIL=$((FAIL + 1))
 fi
 
+# Test 5: et al. appended for papers with >3 authors (ResNet has 4: He, Zhang, Ren, Sun)
+echo "Test 5: et al. for >3 authors..."
+RESNET=$("$SCRIPTS/crossref_search.sh" "deep residual learning image recognition" 3)
+ET_AL=$(echo "$RESNET" | jq -s '[.[].authors | contains("et al.")] | any')
+if [[ "$ET_AL" == "true" ]]; then
+    echo "  PASS: et al. present"
+    PASS=$((PASS + 1))
+else
+    echo "  FAIL: et al. missing for >3 author paper"
+    FAIL=$((FAIL + 1))
+fi
+
+# Test 6: authors field is never null/empty
+echo "Test 6: authors never null..."
+FIRST_RESULT=$("$SCRIPTS/crossref_search.sh" "attention mechanism" 3)
+NULL_AUTHORS=$(echo "$FIRST_RESULT" | jq -s '[.[].authors | (. == null or length == 0)] | any')
+if [[ "$NULL_AUTHORS" == "false" ]]; then
+    echo "  PASS"
+    PASS=$((PASS + 1))
+else
+    echo "  FAIL: some authors null or empty"
+    FAIL=$((FAIL + 1))
+fi
+
 echo "---"
 echo "crossref: $PASS passed, $FAIL failed"
 [[ $FAIL -eq 0 ]]

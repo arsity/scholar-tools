@@ -32,6 +32,6 @@ echo "$RESPONSE" | jq '.message.items[]? | {
     citations: (.["is-referenced-by-count"] // 0),
     doi: .DOI,
     url: .URL,
-    authors: ([.author[]? | ((.given // "") + " " + (.family // ""))][:3] | if length > 0 then join(", ") + (if length > 3 then " et al." else "" end) else "N/A" end),
+    authors: (([.author[]? | ((.given // "") + " " + (.family // ""))] | if length == 0 then ["N/A"] elif length > 3 then .[:3] + ["et al."] else . end) | join(", ")),
     source: "crossref"
 }'

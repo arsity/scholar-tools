@@ -31,11 +31,11 @@ BODY=$(echo "$RESPONSE" | sed '$d')
 case "$HTTP_CODE" in
     200)
         echo "$BODY" | jq '.data[]? | {
-            paper_id: .paperId,
-            title: .title,
+            paper_id: .paper.corpusId,
+            title: .paper.title,
+            authors: [.paper.authors[]?][:3],
             snippet: .snippet.text,
             snippet_section: .snippet.section,
-            url: .url,
             source: "s2_snippet"
         }'
         ;;
