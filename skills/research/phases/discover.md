@@ -25,35 +25,43 @@ Invoke `research-ideation` skill (`brainstorming-research-ideas`) to generate di
 
 ### Step 3: Parallel search — dispatch via `superpowers:dispatching-parallel-agents`
 
-Invoke `superpowers:dispatching-parallel-agents` to launch two independent search agents. Each has a 60-second timeout. If an agent errors or times out, proceed with results from the other.
+Invoke `superpowers:dispatching-parallel-agents` to launch two independent search agents. Each agent receives a task following the **Delegation Contract** (see SKILL.md). If an agent errors or times out, proceed with results from the other.
 
 **Agent 1: Semantic Scholar**
 
-Run sequentially (1 req/sec rate limit):
+```
+WHY:   Find papers relevant to "{topic}" for landscape analysis
+WHAT:  JSON objects, each with: paper_id, title, year, venue, citations, doi, arxiv_id, authors, source: "s2"
+WHERE: S2 API only — s2_search.sh and optionally s2_bulk_search.sh
+LIMIT: Top 20 results (s2_search) + top 50 (s2_bulk_search if year range specified); 60-second timeout
+DONE:  ≥1 result with all required fields populated; exit 0
+DON'T: Don't analyze, rank, or summarize — just retrieve and return raw results
+```
 
 ```bash
 bash scripts/s2_search.sh "<query>" 20
-```
-
-If the user specifies a year range or boolean operators, also run:
-
-```bash
+# If user specifies year range or boolean operators:
 bash scripts/s2_bulk_search.sh "<query>" "<year_range>" 50
 ```
 
-Each result includes `paper_id`, `title`, `year`, `venue`, `citations`, `doi`, `arxiv_id`, `source: "s2"`.
-
 **Agent 2: Hugging Face (trending complement)**
 
-Fetch today's community-highlighted papers and filter by topic keywords:
+```
+WHY:   Surface recent community-highlighted papers that may not yet have S2 citations
+WHAT:  JSON objects with paper metadata, filtered by topic keyword match
+WHERE: HF daily papers only — hf papers ls
+LIMIT: Today's papers filtered by topic keywords; 60-second timeout
+DONE:  Return filtered results (0 results is valid if no topic match today)
+DON'T: Don't do semantic search — keyword matching only; don't duplicate S2's role
+```
 
 ```bash
 hf papers ls --format json
 ```
 
-Filter results: match paper title/summary against the user's query keywords. This is NOT a semantic search — it returns recent daily/trending papers only. It complements S2 by surfacing new work with community traction (upvotes, GitHub stars) that may not yet have citations in S2.
+Filter results: match paper title/summary against the user's query keywords.
 
-**Why `superpowers:dispatching-parallel-agents`**: The two agents are fully independent (no shared state, different APIs), making them ideal for parallel dispatch. The superpowers skill handles agent lifecycle, timeout enforcement, and partial-failure aggregation — no need to reimplement this logic.
+**Why `superpowers:dispatching-parallel-agents`**: The two agents are fully independent (no shared state, different APIs), making them ideal for parallel dispatch. The superpowers skill handles agent lifecycle, timeout enforcement, and partial-failure aggregation.
 
 ### Step 4: Merge
 

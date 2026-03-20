@@ -270,7 +270,7 @@ Codex participates in three modes:
 
 ### Protocol
 
-1. Compose a focused prompt (see table above) with all relevant context. Do NOT pass the entire conversation history — send only the relevant artifacts.
+1. Compose the prompt following the **Delegation Contract** (see below) — every Codex call must have WHY/WHAT/WHERE/LIMIT/DONE/DON'T. Do NOT pass the entire conversation history — send only the artifacts listed in the "What to send" column.
 2. Call `mcp__codex__codex` with the prompt.
 3. For **co-thinker** mode: present Codex's ideas alongside Claude's, clearly labeled `[Codex]`. The user synthesizes both.
 4. For **adversarial** mode: parse the response for **actionable concerns** (not stylistic preferences). Present labeled `[Cross-model review]`.
@@ -293,6 +293,74 @@ In the Discussion Loop, Codex participates as an ongoing third voice. The intera
 - **Not a score-chasing loop**: No "iterate until score ≥ N." That optimizes for LLM preferences, not research quality.
 - **Not a rubber stamp**: If Codex finds nothing, that's a valid signal.
 - **Not blocking**: If Codex MCP is unavailable, all phases proceed with Claude-only analysis (log warning). No phase is gated on Codex availability.
+
+## Delegation Contract
+
+Every delegated task — spawned agent, Codex review call, or subsearch dispatch — must follow a 6-element contract. This prevents vague tasking, bloated context, inconsistent outputs, and scope drift. (Pattern borrowed from `pua:p9` Task Prompt.)
+
+### Schema
+
+```
+WHY   — What decision this task informs; why it matters to the current phase
+WHAT  — Exact artifact to produce (format, fields, structure)
+WHERE — Allowed evidence scope (which papers, which APIs, what context to send)
+LIMIT — Result caps, token budget, timeout
+DONE  — Acceptance criteria (how to verify the output is correct and complete)
+DON'T — Forbidden behavior (what to exclude, what NOT to do)
+```
+
+### Application by delegation type
+
+**Spawned search agents** (discover Step 3):
+
+```
+WHY:   Find papers relevant to "{topic}" for landscape analysis
+WHAT:  JSON array of papers, each with: paper_id, title, year, venue, citations, doi, arxiv_id, authors, source
+WHERE: S2 API only (Agent 1) or HF daily papers only (Agent 2) — no cross-source
+LIMIT: Top 20 results for S2; topic-filtered daily papers for HF; 60-second timeout
+DONE:  ≥1 result returned with all required fields populated; exit 0
+DON'T: Don't analyze, rank, or summarize papers — just retrieve and return raw results
+```
+
+**Codex review calls** (all 10 integration points):
+
+```
+WHY:   {varies — e.g., "Surface assumptions this field takes for granted" or "Find weaknesses in this research direction for {venue}"}
+WHAT:  Structured response: numbered findings, each with a concrete claim and evidence
+WHERE: Only the artifacts listed in the "What to send" column of the invocation table — never the full conversation history
+LIMIT: 3-5 actionable findings; no filler
+DONE:  Each finding is specific enough to act on (names a paper, identifies a gap, flags a weakness)
+DON'T: Don't restate what was sent; don't make stylistic suggestions; don't hedge with "this could be strengthened" — say what's wrong and why
+```
+
+**Knowledge-gap subsearches** (discuss Phase 3):
+
+```
+WHY:   Fill knowledge gap identified during discussion: "{specific method/baseline/claim}"
+WHAT:  1-3 relevant papers with title, year, venue, and one-sentence summary of relevance
+WHERE: S2 search + DBLP search; use the exact method/baseline name as query
+LIMIT: Top 3 results; 30-second timeout per source
+DONE:  At least one paper found that addresses the gap, or explicit "not found after exhaustive search"
+DON'T: Don't fabricate papers; don't use model memory; don't return tangentially related work
+```
+
+**Write-phase review gates** (Triple Review Gate + Codex):
+
+```
+WHY:   {varies — e.g., "As an AC at {venue}, evaluate whether this abstract/intro would survive desk review"}
+WHAT:  2-3 specific revision suggestions, each with: the problematic text, what's wrong, and a concrete fix direction
+WHERE: Only the draft section text + research brief — not the full paper or conversation
+LIMIT: Focus on substance (motivation, contribution clarity, positioning) not prose style
+DONE:  Each suggestion identifies a specific passage and explains why it's a problem
+DON'T: Don't praise what works; don't suggest word-level edits; don't repeat the Iron Rules back
+```
+
+### When to skip
+
+Not every delegation needs full formality. Skip the contract for:
+- Single-script calls (`venue_info.sh`, `ccf_lookup.sh`) — these have fixed I/O
+- Clarificational Codex turns in discuss Phase 3 where the user is providing context
+- Trending phase (simple, no delegation)
 
 ## Language
 
@@ -336,7 +404,7 @@ All scripts are in `skills/research/scripts/`. Key scripts:
 ## Dependencies
 
 ### Required skills/plugins
-- `pua` / `pua-en` from `tanwei/pua` — pressure escalation when stuck (see PUA Pressure Escalation section for trigger conditions)
+- `pua` / `pua-en` from `tanwei/pua` — pressure escalation when stuck (see PUA Pressure Escalation section for trigger conditions). The Delegation Contract schema is borrowed from `pua:p9` Task Prompt pattern.
 - `ml-paper-writing` from `Orchestra-Research AI-Research-SKILLs` — paper structure for write phase
 - `brainstorming-research-ideas` from `Orchestra-Research AI-Research-SKILLs` — search strategy and ideation
 - `creative-thinking-for-research` from `Orchestra-Research AI-Research-SKILLs` — cognitive frameworks for novel ideas
