@@ -11,8 +11,7 @@ Full academic research lifecycle: discover, discuss, read, cite, write, trending
 
 On every invocation, before doing anything else:
 
-1. **Load high-agency skill**: Invoke `pua:high-agency` to ensure exhaustive search and retry behavior
-2. **Load skill router**: Read `phases/skill-router.md` for domain skill mapping. Parse any `--domain` or `--domain-only` flags from user input.
+1. **Load skill router**: Read `phases/skill-router.md` for domain skill mapping. Parse any `--domain` or `--domain-only` flags from user input.
 
 ## Entry Point
 
@@ -152,7 +151,7 @@ Save to `.research-workspace/sessions/{slug}/checkpoints/{phase}_{timestamp}.jso
     "cite_log": "relative path if exists"
   },
   "context_summary": "1-2 sentence summary of what was accomplished and what remains",
-  "skills_loaded": ["multimodal:clip", "pua:high-agency"],
+  "skills_loaded": ["multimodal:clip"],
   "user_decisions": ["chose direction A over B", "skipped experiment design"]
 }
 ```
@@ -217,7 +216,7 @@ Each parallel search agent has a 60-second timeout. If an agent times out or err
 
 1. **Zero hallucination citations** — every citation from an API call, never from model memory
 2. **BibTeX priority** — DBLP > CrossRef > S2 (AlphaXiv is content-only, not a citation source)
-3. **High-agency preload** — loaded at skill start, drives exhaustive search and retry
+3. **PUA pressure escalation** — invoke `pua`/`pua-en` when stuck, drives exhaustive search and retry
 4. **Quality gate** — no paper presented to user without quality evaluation
 5. **Source tracing** — every citation tagged with data source ("via DBLP", "via CrossRef", etc.)
 6. **Own model for analysis** — never rely on AlphaXiv's AI-generated answers; use their content extraction, analyze with own Claude
@@ -230,7 +229,7 @@ Each parallel search agent has a 60-second timeout. If an agent times out or err
 
 ## PUA Pressure Escalation
 
-`pua:high-agency` is pre-loaded at skill start (see Preload). In addition, invoke `pua:pua` (Chinese) or `pua:pua-en` (English) — match the user's language — when **any** of the following conditions are met:
+Invoke `pua:pua` (Chinese) or `pua:pua-en` (English) — match the user's language — when **any** of the following conditions are met:
 
 | Trigger condition | Typical phase |
 | --- | --- |
@@ -337,7 +336,6 @@ All scripts are in `skills/research/scripts/`. Key scripts:
 ## Dependencies
 
 ### Required skills/plugins
-- `high-agency` from `tanwei/pua` — pre-loaded at skill start
 - `pua` / `pua-en` from `tanwei/pua` — pressure escalation when stuck (see PUA Pressure Escalation section for trigger conditions)
 - `ml-paper-writing` from `Orchestra-Research AI-Research-SKILLs` — paper structure for write phase
 - `brainstorming-research-ideas` from `Orchestra-Research AI-Research-SKILLs` — search strategy and ideation
@@ -364,7 +362,7 @@ If dependencies are missing on first use:
 Before using /research, please ensure:
 
 1. Install plugins:
-   - tanwei/pua (provides high-agency, pua-en skills)
+   - tanwei/pua (provides pua, pua-en skills)
    - Orchestra-Research AI-Research-SKILLs (provides ml-paper-writing, brainstorming-research-ideas, creative-thinking-for-research, and 21 domain skill categories)
    - humanizer skill
 

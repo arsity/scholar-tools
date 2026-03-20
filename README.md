@@ -138,7 +138,7 @@ git clone https://github.com/arsity/research-skill.git ~/.claude/plugins/researc
    ```
 
 2. **Required plugins:**
-   - `tanwei/pua` — provides `high-agency` and `pua-en` skills
+   - `tanwei/pua` — provides `pua` and `pua-en` skills
    - `Orchestra-Research/AI-Research-SKILLs` — provides `ml-paper-writing`, `brainstorming-research-ideas`, `creative-thinking-for-research`, and 21 domain skill categories
    - A `humanizer` skill for style review during paper writing
 
@@ -226,7 +226,7 @@ On first invocation, `/research` creates `.research-workspace/` in the current d
 
 1. **Zero hallucination citations** — every citation from an API call, never from model memory
 2. **BibTeX priority** — DBLP > CrossRef > S2
-3. **High-agency preload** — loaded at skill start, drives exhaustive search and retry
+3. **PUA pressure escalation** — invoke `pua`/`pua-en` when stuck, drives exhaustive search and retry
 4. **Quality gate** — no paper presented without quality evaluation
 5. **Source tracing** — every citation tagged with data source
 6. **Own model for analysis** — never rely on AlphaXiv's AI-generated answers
