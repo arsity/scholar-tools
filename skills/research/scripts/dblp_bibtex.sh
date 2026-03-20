@@ -1,46 +1,40 @@
 #!/bin/bash
-# DBLP BibTeX fetch — given a DBLP key, return the .bib entry
-# Usage: bash scripts/dblp_bibtex.sh "conf/cvpr/HeZRS16"
+# DBLP BibTeX fetch — condensed format via official search API
+# Usage: bash scripts/dblp_bibtex.sh "paper title" [first_author] [year]
+#
+# Adding first_author and/or year dramatically improves ranking accuracy.
+# Without them, the search may return a different paper as the top result.
+# Falls back to dblp.uni-trier.de if dblp.org is unavailable.
 
 set -e
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 source "$SCRIPT_DIR/init.sh"
 
-DBLP_KEY="${1:-}"
+TITLE="${1:-}"
+AUTHOR="${2:-}"
+YEAR="${3:-}"
 
-if [[ -z "$DBLP_KEY" ]]; then
-    echo '{"error": "Usage: bash scripts/dblp_bibtex.sh \"dblp_key\""}' >&2
+if [[ -z "$TITLE" ]]; then
+    echo '{"error": "Usage: bash scripts/dblp_bibtex.sh \"paper title\" [first_author] [year]"}' >&2
     exit 1
 fi
 
-rate_limit "$DBLP_RATE_LIMIT_FILE" "$DBLP_MIN_INTERVAL"
+# Build query: title + optional author/year constraints
+QUERY="$TITLE"
+[[ -n "$AUTHOR" ]] && QUERY="$QUERY author:${AUTHOR}"
+[[ -n "$YEAR" ]] && QUERY="$QUERY year:${YEAR}"
 
-RESPONSE=$(curl -sL -w "\n%{http_code}" \
-    "https://dblp.org/rec/${DBLP_KEY}.bib" \
-    --max-time 30 2>/dev/null)
+ENCODED_QUERY=$(printf '%s' "$QUERY" | jq -sRr @uri)
 
-HTTP_CODE=$(echo "$RESPONSE" | tail -n1)
-BODY=$(echo "$RESPONSE" | sed '$d')
+BODY=$(dblp_request "/search/publ/api?q=${ENCODED_QUERY}&format=bib0&h=1") || {
+    echo "{\"error\": \"DBLP BibTeX unavailable (all hosts failed) for query: $TITLE\"}" >&2
+    exit 1
+}
 
-case "$HTTP_CODE" in
-    200)
-        if [[ -z "$BODY" ]]; then
-            echo "{\"error\": \"DBLP BibTeX empty for key: $DBLP_KEY\"}" >&2
-            exit 1
-        fi
-        echo "$BODY"
-        ;;
-    404)
-        echo "{\"error\": \"DBLP BibTeX not found for key: $DBLP_KEY\"}" >&2
-        exit 1
-        ;;
-    429)
-        echo '{"error": "DBLP rate limit exceeded."}' >&2
-        exit 1
-        ;;
-    *)
-        echo "{\"error\": \"DBLP BibTeX HTTP $HTTP_CODE\"}" >&2
-        exit 1
-        ;;
-esac
+if [[ -z "$BODY" ]]; then
+    echo "{\"error\": \"DBLP BibTeX not found for query: $TITLE\"}" >&2
+    exit 1
+fi
+
+echo "$BODY"

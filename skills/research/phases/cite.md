@@ -30,9 +30,9 @@ Execute in order. Stop at the first success.
 1. DBLP (highest quality)
    → dblp_search.sh "<title>" 5
    → Check top result: tokenize both titles (split whitespace, lowercase)
-   → If token overlap > 90% (intersection/union): use that DBLP key
+   → If token overlap > 90% (intersection/union): confirmed match
    → If multiple results > 90%: prefer matching year + first author
-   → dblp_bibtex.sh "<dblp_key>"
+   → dblp_bibtex.sh "<matched_title>" "<first_author_surname>" "<year>"
    → Tag: "via DBLP"
 
 2. CrossRef (DOI-based)

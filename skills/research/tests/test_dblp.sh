@@ -30,9 +30,9 @@ fi
 
 sleep 1
 
-# Test 3: Fetch BibTeX for known key
-echo "Test 3: Fetch BibTeX for conf/cvpr/HeZRS16..."
-BIB=$("$SCRIPTS/dblp_bibtex.sh" "conf/cvpr/HeZRS16")
+# Test 3: Fetch condensed BibTeX via search API
+echo "Test 3: Fetch BibTeX for 'Deep Residual Learning for Image Recognition'..."
+BIB=$("$SCRIPTS/dblp_bibtex.sh" "Deep Residual Learning for Image Recognition" "He" "2016")
 if echo "$BIB" | grep -q "@inproceedings"; then
     echo "  PASS: Got valid BibTeX"
     PASS=$((PASS + 1))

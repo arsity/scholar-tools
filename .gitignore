@@ -1,4 +1,5 @@
-# Secrets
+# Secrets — never commit API keys
+.claude/settings.local.json
 skills/research/.env
 
 # Internal dev specs/plans (not for public repo)

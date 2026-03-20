@@ -10,13 +10,6 @@ else
     SKILL_ROOT="$(dirname "$SCRIPT_DIR")"
 fi
 
-# Load .env if present
-if [[ -f "$SKILL_ROOT/.env" ]]; then
-    set -a
-    source "$SKILL_ROOT/.env"
-    set +a
-fi
-
 # Data directory
 export SKILL_DATA_DIR="$SKILL_ROOT/data"
 
@@ -28,6 +21,51 @@ export DBLP_MIN_INTERVAL="${DBLP_MIN_INTERVAL:-1}"
 
 # arXiv citation threshold
 export ARXIV_CITATION_THRESHOLD="${ARXIV_CITATION_THRESHOLD:-100}"
+
+# DBLP API hosts — main server + Trier mirror fallback
+DBLP_HOSTS=("https://dblp.org" "https://dblp.uni-trier.de")
+
+# Helper: try a DBLP API request, fallback to mirror on server errors
+# Usage: dblp_request "/search/publ/api?q=...&format=json&h=10"
+# Returns: response body on stdout; sets DBLP_HTTP_CODE
+# Falls back to next host on 5xx, 429, timeouts, or HTML error pages
+dblp_request() {
+    local path="$1"
+    for host in "${DBLP_HOSTS[@]}"; do
+        rate_limit "$DBLP_RATE_LIMIT_FILE" "$DBLP_MIN_INTERVAL"
+        local response
+        response=$(curl -sL -w "\n%{http_code}" "${host}${path}" --max-time 30 2>/dev/null) || true
+        DBLP_HTTP_CODE=$(echo "$response" | tail -n1)
+        # curl transport failure (DNS, timeout, connection refused) → empty/invalid HTTP code
+        if [[ -z "$DBLP_HTTP_CODE" ]] || ! [[ "$DBLP_HTTP_CODE" =~ ^[0-9]+$ ]]; then
+            continue
+        fi
+        local body
+        body=$(echo "$response" | sed '$d')
+
+        case "$DBLP_HTTP_CODE" in
+            200)
+                # HTML error pages sometimes come as 200
+                if [[ "$body" == *"<!DOCTYPE"* ]] || [[ "$body" == *"<html"* ]]; then
+                    continue
+                fi
+                echo "$body"
+                return 0
+                ;;
+            404)
+                # Not found is definitive — don't fallback
+                DBLP_HTTP_CODE=404
+                return 1
+                ;;
+            *)
+                # 429, 5xx, timeouts, connection errors — try next host
+                continue
+                ;;
+        esac
+    done
+    # All hosts failed
+    return 1
+}
 
 # Helper: enforce rate limit for a given service
 # Usage: rate_limit "$RATE_LIMIT_FILE" "$MIN_INTERVAL"

@@ -126,10 +126,13 @@ git clone https://github.com/arsity/research-skill.git ~/.claude/plugins/researc
 
 **Required:**
 
-1. **Semantic Scholar API key** — get one at [semanticscholar.org/product/api](https://www.semanticscholar.org/product/api/api-key), then:
-   ```bash
-   cp skills/research/.env.example skills/research/.env
-   # Edit .env and add your S2_API_KEY
+1. **Semantic Scholar API key** — get one at [semanticscholar.org/product/api](https://www.semanticscholar.org/product/api/api-key), then add to your project's `.claude/settings.local.json`:
+   ```json
+   {
+     "env": {
+       "S2_API_KEY": "your-key-here"
+     }
+   }
    ```
 
 2. **Required plugins:**
@@ -147,7 +150,6 @@ git clone https://github.com/arsity/research-skill.git ~/.claude/plugins/researc
 ```
 skills/research/
   SKILL.md                  # Orchestrator — intent detection + routing + unified input parsing
-  .env.example              # API key template
   phases/
     skill-router.md         # Central domain detection + skill routing (21 categories)
     discover.md             # Multi-source search + quick-read + landscape summary
@@ -157,7 +159,7 @@ skills/research/
     write.md                # Paper writing with Triple Review Gate + Consistency Check
     trending.md             # Personalized trending digest with domain insights
   scripts/                  # 18 self-contained bash scripts
-    init.sh                 # Env loading, rate limit helpers
+    init.sh                 # Rate limit helpers, DBLP host fallback
     s2_search.sh            # S2 relevance-ranked search
     s2_bulk_search.sh       # S2 boolean bulk search with year filtering
     s2_batch.sh             # S2 batch metadata (up to 500 IDs)
@@ -167,7 +169,7 @@ skills/research/
     s2_snippet.sh           # Search within paper bodies
     s2_match.sh             # Exact title match
     dblp_search.sh          # DBLP publication search
-    dblp_bibtex.sh          # DBLP key → .bib
+    dblp_bibtex.sh          # Title+author+year → condensed .bib via DBLP API
     crossref_search.sh      # CrossRef search
     doi2bibtex.sh           # DOI → BibTeX via content negotiation
     hf_daily_papers.sh      # HF trending papers API
@@ -198,7 +200,7 @@ skills/research/
 bash skills/research/tests/run_all_tests.sh
 ```
 
-Requires a Semantic Scholar API key in `skills/research/.env`. Tests hit live APIs (S2, DBLP, CrossRef, HF).
+Requires `S2_API_KEY` in `.claude/settings.local.json` (see Installation). Tests hit live APIs (S2, DBLP, CrossRef, HF).
 
 ## Workspace
 

@@ -8,15 +8,15 @@ PASS=0; FAIL=0
 # Test 1: DBLP should find ResNet
 echo "Test 1: Cite chain — DBLP finds ResNet..."
 DBLP_RESULT=$("$SCRIPTS/dblp_search.sh" "Deep Residual Learning for Image Recognition" 1)
-DBLP_KEY=$(echo "$DBLP_RESULT" | jq -s '.[0]' | jq -r '.dblp_key // empty')
-if [[ -n "$DBLP_KEY" ]]; then
-    echo "  PASS: Found DBLP key=$DBLP_KEY"
+DBLP_TITLE=$(echo "$DBLP_RESULT" | jq -s '.[0]' | jq -r '.title // empty')
+if [[ -n "$DBLP_TITLE" ]]; then
+    echo "  PASS: Found DBLP title=$DBLP_TITLE"
     PASS=$((PASS + 1))
 
     sleep 1
 
-    # Fetch BibTeX
-    BIB=$("$SCRIPTS/dblp_bibtex.sh" "$DBLP_KEY")
+    # Fetch condensed BibTeX via search API (with author+year for ranking accuracy)
+    BIB=$("$SCRIPTS/dblp_bibtex.sh" "Deep Residual Learning for Image Recognition" "He" "2016")
     if echo "$BIB" | grep -q "@"; then
         echo "  PASS: Got BibTeX via DBLP"
         PASS=$((PASS + 1))
