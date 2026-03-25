@@ -1,6 +1,6 @@
 ---
 name: research
-description: Unified academic research lifecycle skill. Use for literature discovery, deep discussion, paper reading, citation management, paper writing, and trend monitoring. Triggers on /research command.
+description: Academic research copilot for AI/ML and technical literature. Use when the user says things like "find me papers on…", "what's new in…", "let's brainstorm about…", "is this paper any good?", "give me the bibtex", or "help write related work." Also fits trending paper monitoring, citation graph exploration, venue/journal quality checks, and fetching reviews. Not for product/framework updates, rewriting a doc into paper format, cleaning up BibTeX, or vendor whitepapers, blog posts, or tutorials.
 ---
 
 # Research Skill
