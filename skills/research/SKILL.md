@@ -68,7 +68,8 @@ Fetched paper content is expensive (network latency, rate limits, AlphaXiv/arXiv
 │   ├── reviews.json     # OpenReview official reviews (if venue uses OpenReview)
 │   ├── rebuttal.json    # Author rebuttals (if available)
 │   ├── meta_review.json # AC/SAC meta-review (if available)
-│   └── decision.json    # Accept/reject decision (if available)
+│   ├── decision.json    # Accept/reject decision (if available)
+│   └── discussion.json  # Threaded replies: author comments, reviewer follow-ups, ethics reviews
 └── cache_meta.json      # What was cached, when, from where
 ```
 
@@ -111,16 +112,17 @@ For papers published at venues that use OpenReview, attempt to fetch review reco
 **Fetch flow** (when credentials are available):
 
 1. **Detect OpenReview venue**: Check if the paper's venue (from S2 metadata) is known to use OpenReview. Known venues: ICLR, NeurIPS, ICML, AAAI, CVPR, ICCV, ECCV, COLM, EMNLP, ACL, NAACL, AISTATS, UAI, KDD, The Web Conference, TMLR, and ARR (review-only, not a publication venue). This list is not exhaustive — if a venue is not listed but the paper has an OpenReview URL in S2 metadata, attempt fetch anyway.
-2. **Authenticate**: `curl -sL -X POST -H "Content-Type: application/json" "https://api2.openreview.net/login" -d "{\"id\":\"$OPENREVIEW_USER\",\"password\":\"$OPENREVIEW_PASS\"}"` → extract `token` from JSON response.
+2. **Authenticate**: `LOGIN_JSON=$(curl -sL -X POST -H "Content-Type: application/json" "https://api2.openreview.net/login" -d "{\"id\":\"$OPENREVIEW_USER\",\"password\":\"$OPENREVIEW_PASS\"}" --max-time 30 2>/dev/null)`. Check for MFA: `echo "$LOGIN_JSON" | jq -e '.mfaPending' > /dev/null 2>&1 && { echo '{"error":"MFA enabled, cannot authenticate"}' >&2; }`. Extract token: `TOKEN=$(echo "$LOGIN_JSON" | jq -er '.token')` — if this fails (exit non-zero), auth failed, set `status: "auth_failed"` and stop. Token is valid for 24 hours. If the token must be persisted to disk (e.g., for subshell use), use `TMPFILE=$(mktemp)` with `trap "rm -f $TMPFILE" EXIT` and `umask 077`.
 3. **Search OpenReview**: `curl -sL -H "Authorization: Bearer $TOKEN" "https://api2.openreview.net/notes/search?term={url_encoded_title}&source=forum&limit=3"` — match by normalized title equality. If the venue ID is known, add `&content.venueid={venue_id}` to narrow results.
-4. **Fetch reviews**: If forum found, fetch replies using `details=replies` on the submission note: `curl -sL -H "Authorization: Bearer $TOKEN" "https://api2.openreview.net/notes?forum={forum_id}&details=replies&limit=1000"`. Classify replies by invitation suffix:
-   - **Official reviews**: invitation ending in `Official_Review` (or venue-specific review name)
-   - **Author rebuttals**: invitation ending in `Rebuttal` (a specific stage, not general author comments)
-   - **Meta-reviews**: invitation ending in `Meta_Review`
-   - **Decisions**: invitation ending in `Decision` (store separately from meta-reviews)
-   - Note: invitation names are venue-configurable. The suffixes above cover ~95% of cases. If a venue uses non-standard names, reviews may be missed — this is acceptable for best-effort.
-5. **Parse v2 content shape**: In API v2, note content fields are nested: `note.content.{field}.value` (not `note.content.{field}` directly). For example, review text is at `note.content.review.value`, rating at `note.content.rating.value`. Some fields may also have `note.content.{field}.readers` controlling visibility.
-6. **Save**: Write `reviews.json`, `rebuttal.json`, `meta_review.json`, `decision.json` to `cache/{paper_id}/openreview/`.
+4. **Fetch reviews**: If forum found, fetch all notes in the forum: `curl -sL -H "Authorization: Bearer $TOKEN" "https://api2.openreview.net/notes?forum={forum_id}&limit=1000"`. Classify notes using a **dual-signal approach** — check `invitations[]` first (strongest signal when present), then fall back to `signatures` + content keys (needed because `invitation` is often null for published papers):
+   - **Official reviews**: `invitation` ending in `Official_Review` OR (`signatures` contains `Reviewer_*` AND content has review-like keys: `summary`, `strengths`, `weaknesses`, `rating`, `confidence`, `soundness` — field names vary by venue, e.g., `review`, `main_review`, `recommendation`)
+   - **Meta-reviews**: `invitation` ending in `Meta_Review` OR (`signatures` contains `Area_Chair_*`/`Senior_Area_Chair_*` AND content has `metareview` key)
+   - **Decisions**: `invitation` ending in `Decision` OR (`signatures` contains `Program_Chairs` AND content has `decision` key)
+   - **Author rebuttals**: `signatures` contains `Authors` AND `replyto` points to a note already classified as a review
+   - **Discussion**: all remaining threaded replies (author comments on forum root, reviewer follow-ups, ethics reviews, official comments)
+   - Notes with `replyto` equal to the forum ID are direct replies. Notes with `replyto` pointing to another note are threaded discussion.
+5. **Parse v2 content shape**: In API v2, note content fields are nested: `note.content.{field}.value` (not `note.content.{field}` directly). For example, rating at `note.content.rating.value` (e.g., `"8: accept, good paper"`), decision at `note.content.decision.value` (e.g., `"Accept (poster)"`). Review text may span multiple fields depending on venue — common keys include `summary`, `strengths`, `weaknesses`, `review`, `main_review`, `comment`, `recommendation`. Extract all content keys, don't hardcode a single field. Some fields may also have `note.content.{field}.readers` controlling visibility. **Caution**: API responses may contain raw control characters (tabs, newlines in review text) that break `jq`. Use `json.loads(text, strict=False)` in Python for parsing; only use `tr -d '\000-\037'` for disposable inspection, not for stored artifacts.
+6. **Save**: Write `reviews.json`, `rebuttal.json`, `meta_review.json`, `decision.json`, `discussion.json` to `cache/{paper_id}/openreview/`.
 7. **Graceful degradation**: Handle failures with appropriate status:
    - Auth failure (401) → `status: "auth_failed"`, log warning
    - Restricted data (403 or notes returned with redacted/missing fields) → `status: "private"`. Do NOT freeze as permanent — reviews may become public after camera-ready
