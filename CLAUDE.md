@@ -14,16 +14,16 @@ This is a **Claude Code plugin** (not a standalone app). It runs inside Claude C
 
 ```bash
 # Run all tests (hits live APIs, requires S2_API_KEY in .claude/settings.json env)
-bash skills/research/tests/run_all_tests.sh
+bash tests/run_all_tests.sh
 
 # Run a single test suite
-bash skills/research/tests/test_s2_search.sh
+bash tests/test_s2_search.sh
 
 # Run a single script manually
 bash skills/research/scripts/s2_search.sh "human pose estimation" 10
 
 # Structural validation only (no API calls)
-bash skills/research/tests/test_structure.sh
+bash tests/test_structure.sh
 ```
 
 No build step. No package manager. All scripts are plain bash with `curl`, `jq`, and `sqlite3` as external dependencies.
@@ -96,7 +96,7 @@ All conventions below are derived from real bugs. See `CONTRIBUTING.md` for the 
 
 ### Testing
 
-- Every script must have a test in `skills/research/tests/`
+- Every script must have a test in `tests/`
 - Tests hit live APIs — they require `S2_API_KEY` (set in `.claude/settings.json` `env`, auto-exported by Claude Code)
 - Test fixtures must be verified against real API responses (not assumed)
 - Content assertions required — checking field existence alone is insufficient
@@ -125,6 +125,6 @@ Codex (via `mcp__codex__codex`) participates as co-thinker (divergent phases) an
 
 1. Static analysis: verify all curl/jq patterns match the standards above
 2. Run each modified script with real inputs and inspect output
-3. Run full test suite: `bash skills/research/tests/run_all_tests.sh`
+3. Run full test suite: `bash tests/run_all_tests.sh`
 4. Cross-validate any empty or suspicious output with raw curl
 5. Break modified scripts and verify their tests catch the bug

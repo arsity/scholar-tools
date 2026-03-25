@@ -2,7 +2,7 @@
 # Test s2_citations.sh and s2_references.sh
 set -e
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-SCRIPTS="$SCRIPT_DIR/../scripts"
+SCRIPTS="$SCRIPT_DIR/../skills/research/scripts"
 PASS=0; FAIL=0
 
 # ResNet paper ID (verified via s2_match.sh)

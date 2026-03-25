@@ -2,7 +2,7 @@
 # Integration test: full DBLP > CrossRef > S2 citation chain
 set -e
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-SCRIPTS="$SCRIPT_DIR/../scripts"
+SCRIPTS="$SCRIPT_DIR/../skills/research/scripts"
 PASS=0; FAIL=0
 
 # Test 1: DBLP should find ResNet

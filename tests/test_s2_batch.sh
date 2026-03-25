@@ -2,7 +2,7 @@
 # Test s2_batch.sh
 set -e
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-SCRIPTS="$SCRIPT_DIR/../scripts"
+SCRIPTS="$SCRIPT_DIR/../skills/research/scripts"
 PASS=0; FAIL=0
 
 # Test 1: Fetch metadata for known paper IDs (ResNet, BERT)

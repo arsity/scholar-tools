@@ -2,7 +2,7 @@
 # test_structure.sh — Validate skill file structural integrity
 set -euo pipefail
 
-SCRIPT_DIR="$(cd "$(dirname "$0")/.." && pwd)"
+SCRIPT_DIR="$(cd "$(dirname "$0")/../skills/research" && pwd)"
 PHASES_DIR="$SCRIPT_DIR/phases"
 SCRIPTS_DIR="$SCRIPT_DIR/scripts"
 ERRORS=0

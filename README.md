@@ -198,23 +198,23 @@ skills/research/
     ccf_2026.sqlite         # CCF rankings database (682 entries)
     ccf_2026.jsonl          # CCF rankings source
     impact_factor.sqlite3   # Impact factor database (19,727 journals)
-  tests/                    # 9 test suites + runner
-    run_all_tests.sh
-    test_structure.sh       # Structural validation (phase files, categories, migrations)
-    test_s2_search.sh
-    test_s2_network.sh
-    test_s2_batch.sh
-    test_dblp.sh
-    test_crossref.sh
-    test_quality_eval.sh
-    test_hf_daily.sh
-    test_cite_chain.sh
+tests/                        # Test suites (separate from skill)
+  run_all_tests.sh
+  test_structure.sh           # Structural validation (phase files, categories, migrations)
+  test_s2_search.sh
+  test_s2_network.sh
+  test_s2_batch.sh
+  test_dblp.sh
+  test_crossref.sh
+  test_quality_eval.sh
+  test_hf_daily.sh
+  test_cite_chain.sh
 ```
 
 ## Running tests
 
 ```bash
-bash skills/research/tests/run_all_tests.sh
+bash tests/run_all_tests.sh
 ```
 
 Requires `S2_API_KEY` in `.claude/settings.json` `env` (see Installation). Tests hit live APIs (S2, DBLP, CrossRef, HF).
