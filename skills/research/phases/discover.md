@@ -25,17 +25,17 @@ Invoke `research-ideation` skill (`brainstorming-research-ideas`) to generate di
 
 ### Step 3: Parallel search — dispatch via `superpowers:dispatching-parallel-agents`
 
-Invoke `superpowers:dispatching-parallel-agents` to launch two independent search agents. Each agent receives a task following the **Delegation Contract** (see SKILL.md). If an agent errors or times out, proceed with results from the other.
+Invoke `superpowers:dispatching-parallel-agents` to launch two independent search agents. Each agent receives a task following the **Task Brief** (see SKILL.md). If an agent errors or times out, proceed with results from the other.
 
 **Agent 1: Semantic Scholar**
 
 ```
-WHY:   Find papers relevant to "{topic}" for landscape analysis
-WHAT:  JSON objects, each with: paper_id, title, year, venue, citations, doi, arxiv_id, authors, source: "s2"
-WHERE: S2 API only — s2_search.sh and optionally s2_bulk_search.sh
-LIMIT: Top 20 results (s2_search) + top 50 (s2_bulk_search if year range specified); 60-second timeout
-DONE:  ≥1 result with all required fields populated; exit 0
-DON'T: Don't analyze, rank, or summarize — just retrieve and return raw results
+GOAL:       Find papers relevant to "{topic}" for landscape analysis
+DELIVERABLE: JSON objects, each with: paper_id, title, year, venue, citations, doi, arxiv_id, authors, source: "s2"
+EVIDENCE:   S2 API only — s2_search.sh and optionally s2_bulk_search.sh
+CONSTRAINTS: Top 20 results (s2_search) + top 50 (s2_bulk_search if year range specified); 60-second timeout
+DONE WHEN:  ≥1 result with all required fields populated; exit 0
+EXCLUSIONS: Don't analyze, rank, or summarize — just retrieve and return raw results
 ```
 
 ```bash
@@ -47,12 +47,12 @@ bash scripts/s2_bulk_search.sh "<query>" "<year_range>" 50
 **Agent 2: Hugging Face (trending complement)**
 
 ```
-WHY:   Surface recent community-highlighted papers that may not yet have S2 citations
-WHAT:  JSON objects with paper metadata, filtered by topic keyword match
-WHERE: HF daily papers only — hf papers ls
-LIMIT: Today's papers filtered by topic keywords; 60-second timeout
-DONE:  Return filtered results (0 results is valid if no topic match today)
-DON'T: Don't do semantic search — keyword matching only; don't duplicate S2's role
+GOAL:       Surface recent community-highlighted papers that may not yet have S2 citations
+DELIVERABLE: JSON objects with paper metadata, filtered by topic keyword match
+EVIDENCE:   HF daily papers only — hf papers ls
+CONSTRAINTS: Today's papers filtered by topic keywords; 60-second timeout
+DONE WHEN:  Return filtered results (0 results is valid if no topic match today)
+EXCLUSIONS: Don't do semantic search — keyword matching only; don't duplicate S2's role
 ```
 
 ```bash
@@ -162,7 +162,7 @@ Before presenting results to the user, invoke `superpowers:verification-before-c
 - Every paper in the output has a composite score (no missing quality evaluations)
 - No duplicate papers slipped through deduplication (re-check arXiv ID / DOI / title overlap)
 - Core contribution and read recommendation are populated for all quick-read papers
-- At least one search source returned results (if both returned 0, trigger PUA escalation per Iron Rule)
+- At least one search source returned results (if both returned 0, follow the Search Escalation Protocol per Iron Rule #3)
 
 Only proceed to presentation after all checks pass.
 

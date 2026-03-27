@@ -207,7 +207,7 @@ Phases that accept a paper identifier (discuss, read, cite) share this logic. Di
 When free-text search returns multiple candidates, present each with:
 - Title + authors (first 3) + year + venue
 - One-sentence core contribution (from abstract)
-- Quality marker (CCF/JCR tier, citation count via `venue_info.sh`)
+- Quality marker (CCF/JCR tier via `venue_info.sh`, citation count from S2 metadata)
 
 User selects one → proceed to the requested phase.
 
@@ -227,7 +227,7 @@ Each parallel search agent has a 60-second timeout. If an agent times out or err
 
 1. **Zero hallucination citations** — every citation from an API call, never from model memory
 2. **BibTeX priority** — DBLP > CrossRef > S2 (AlphaXiv is content-only, not a citation source)
-3. **PUA pressure escalation** — invoke `pua`/`pua-en` when stuck, drives exhaustive search and retry
+3. **Exhaustive search escalation** — when a retrieval task has no directly relevant results after the applicable primary searches, follow the Search Escalation Protocol before accepting "not found"
 4. **Quality gate** — no paper presented to user without quality evaluation
 5. **Source tracing** — every citation tagged with data source ("via DBLP", "via CrossRef", etc.)
 6. **Own model for analysis** — never rely on AlphaXiv's AI-generated answers; use their content extraction, analyze with own Claude
@@ -238,19 +238,69 @@ Each parallel search agent has a 60-second timeout. If an agent times out or err
 11. **Verify before completion** — invoke `superpowers:verification-before-completion` before presenting final output in cite, write, and discover phases (see each phase for details)
 12. **Root cause before retry** — when any script or API call fails, diagnose the root cause (API key expired? rate limit? malformed query? network error?) before retrying or switching strategy. Never retry blindly. (Borrowed from `superpowers:systematic-debugging`)
 
-## PUA Pressure Escalation
+## Search Escalation Protocol
 
-Invoke `pua:pua` (Chinese) or `pua:pua-en` (English) — match the user's language — when **any** of the following conditions are met:
+When a retrieval task has no directly relevant results after the applicable primary searches, classify the failure before escalating:
+
+### Failure classification
+
+| Failure type | Meaning | Action |
+| --- | --- | --- |
+| Zero results | Query returned nothing from primary sources | Escalate through strategy ladder |
+| Exact-match miss | Title/DOI/arXiv ID lookup failed | Check alternate titles (preprint vs. published), arXiv ID variants, DOI redirects |
+| Metadata mismatch | Found paper but required fields missing | Try alternate source in priority order: DBLP → CrossRef → S2 (per Iron Rule #2) |
+| Indexing lag | Paper too new for database | Check arXiv directly, HF daily papers, or accept "not yet indexed" |
+| Query drift | Results returned but none directly relevant | Tighten query specificity, add field-specific keywords, filter by year |
+| Version drift | Preprint title/content differs from published version | Search both titles, check DOI and arXiv ID separately |
+| Timeout or rate limit | Operational failure | Retry once after delay, then proceed with remaining sources |
+| Source outage | API down | Skip source, log warning, proceed with remaining sources |
+
+### Strategy ladder
+
+Work through these strategies in order. Stop when directly relevant results are found and verified enough for the current phase. Earlier strategies are cheaper; later strategies cast a wider net.
+
+1. **Normalize query**: expand acronyms, try alternate spellings/aliases, singular↔plural
+2. **Exact-match probe**: `s2_match.sh` for precise titles; DOI/arXiv ID direct lookup
+3. **Adjust year window**: narrow for recent work, widen for foundational terminology (cheap parameter tweak)
+4. **Decompose**: split compound queries into task + method + dataset + metric, search each separately
+5. **Switch retrieval mode**: `s2_search.sh` → `s2_bulk_search.sh` → DBLP → CrossRef title search
+6. **Pivot to graph search**: if any seed paper exists, use `s2_citations.sh`, `s2_references.sh`, `s2_recommend.sh`
+7. **Body search**: `s2_snippet.sh` for method names or claims not in titles/abstracts
+8. **Abstract to adjacent fields**: generalize the problem and search neighboring domains (label results as analogical evidence, not direct prior art)
+
+### Trigger conditions
 
 | Trigger condition | Typical phase |
 | --- | --- |
-| S2 + DBLP + CrossRef searches all return 0 results for a non-trivial query | discover Step 3-4 |
-| Cite source chain fails completely (DBLP → CrossRef → S2 all miss) | cite Step 2 |
+| All applicable primary searches return 0 results for a non-trivial query (S2 + HF in discover; DBLP + CrossRef + S2 in cite) | discover Step 3-4, cite Step 2 |
 | 2+ consecutive API timeouts or HTTP errors across any scripts | any phase |
 | Knowledge-gap search in discuss cannot find the referenced method/baseline | discuss Phase 3 |
 | >30% of `\cite{}` references fail verification during write | write Step 4 |
 
-**Behavior after trigger**: PUA pressure escalation forces exhaustive alternative strategies — rephrase keywords, broaden/narrow year range, try alternate APIs, decompose compound queries, search in adjacent fields — before accepting "not found." The escalation levels (L1→L4) and methodology follow the PUA skill's own protocol.
+### Stop condition and attempt ledger
+
+After exhausting the ladder, or when a strategy succeeds, produce an **attempt ledger**:
+
+```json
+{
+  "query_original": "...",
+  "failure_type": "zero_results|exact_match_miss|metadata_mismatch|indexing_lag|query_drift|version_drift|timeout_or_rate_limit|source_outage",
+  "attempts": [
+    {
+      "strategy": "normalize|exact_match|adjust_year|decompose|switch_mode|graph_search|body_search|adjacent_fields",
+      "query": "expanded query text",
+      "source": "s2_search|s2_bulk|s2_match|s2_citations|s2_references|s2_recommend|s2_snippet|dblp_search|dblp_bibtex|arxiv_bibtex|crossref_search|doi2bibtex|hf",
+      "result_count": 0,
+      "status": "matched|zero_results|irrelevant|timeout|rate_limited|source_down|error",
+      "notes": "optional: error details, HTTP status, why results were irrelevant"
+    }
+  ],
+  "final_outcome": "found|not_found_after_exhaustive_search|genuine_null|blocked_by_operational_failure",
+  "resolved_by": "normalize|exact_match|adjust_year|decompose|switch_mode|graph_search|body_search|adjacent_fields|null"
+}
+```
+
+**"Not found after exhaustive search" is a valid, honest outcome.** Some papers are not indexed, some methods have no prior work, and some queries target genuinely unexplored territory. Never fabricate papers or cite from model memory to avoid a null result.
 
 ## Cross-Model Collaboration
 
@@ -281,7 +331,7 @@ Codex participates in three modes:
 
 ### Protocol
 
-1. Compose the prompt following the **Delegation Contract** (see below) — every Codex call must have WHY/WHAT/WHERE/LIMIT/DONE/DON'T. Do NOT pass the entire conversation history — send only the artifacts listed in the "What to send" column.
+1. Compose the prompt following the **Task Brief** (see below) — every Codex call must have GOAL/DELIVERABLE/EVIDENCE/CONSTRAINTS/DONE WHEN/EXCLUSIONS. Do NOT pass the entire conversation history — send only the artifacts listed in the "What to send" column.
 2. Call `mcp__codex__codex` with the prompt.
 3. For **co-thinker** mode: present Codex's ideas alongside Claude's, clearly labeled `[Codex]`. The user synthesizes both.
 4. For **adversarial** mode: parse the response for **actionable concerns** (not stylistic preferences). Present labeled `[Cross-model review]`.
@@ -305,19 +355,19 @@ In the Discussion Loop, Codex participates as an ongoing third voice. The intera
 - **Not a rubber stamp**: If Codex finds nothing, that's a valid signal.
 - **Not blocking**: If Codex MCP is unavailable, all phases proceed with Claude-only analysis (log warning). No phase is gated on Codex availability.
 
-## Delegation Contract
+## Task Brief
 
-Every delegated task — spawned agent, Codex review call, or subsearch dispatch — must follow a 6-element contract. This prevents vague tasking, bloated context, inconsistent outputs, and scope drift. (Pattern borrowed from `pua:p9` Task Prompt.)
+Every delegated task — spawned agent, Codex review call, or subsearch dispatch — must follow a 6-element brief. This prevents vague tasking, bloated context, inconsistent outputs, and scope drift.
 
 ### Schema
 
 ```
-WHY   — What decision this task informs; why it matters to the current phase
-WHAT  — Exact artifact to produce (format, fields, structure)
-WHERE — Allowed evidence scope (which papers, which APIs, what context to send)
-LIMIT — Result caps, token budget, timeout
-DONE  — Acceptance criteria (how to verify the output is correct and complete)
-DON'T — Forbidden behavior (what to exclude, what NOT to do)
+GOAL        — What decision this task informs; why it matters to the current phase
+DELIVERABLE — Exact artifact to produce (format, fields, structure)
+EVIDENCE    — Allowed evidence sources (which papers, which APIs, what context to send)
+CONSTRAINTS — Result caps, token budget, timeout
+DONE WHEN   — Acceptance criteria (how to verify the output is correct and complete)
+EXCLUSIONS  — Forbidden behavior (what to exclude, what NOT to do)
 ```
 
 ### Application by delegation type
@@ -325,50 +375,50 @@ DON'T — Forbidden behavior (what to exclude, what NOT to do)
 **Spawned search agents** (discover Step 3):
 
 ```
-WHY:   Find papers relevant to "{topic}" for landscape analysis
-WHAT:  JSON array of papers, each with: paper_id, title, year, venue, citations, doi, arxiv_id, authors, source
-WHERE: S2 API only (Agent 1) or HF daily papers only (Agent 2) — no cross-source
-LIMIT: Top 20 results for S2; topic-filtered daily papers for HF; 60-second timeout
-DONE:  ≥1 result returned with all required fields populated; exit 0
-DON'T: Don't analyze, rank, or summarize papers — just retrieve and return raw results
+GOAL:       Find papers relevant to "{topic}" for landscape analysis
+DELIVERABLE: JSON objects, each with: paper_id, title, year, venue, citations, doi, arxiv_id, authors, source
+EVIDENCE:   S2 API only (Agent 1) or HF daily papers only (Agent 2) — no cross-source
+CONSTRAINTS: Top 20 results for S2; topic-filtered daily papers for HF; 60-second timeout
+DONE WHEN:  ≥1 result returned with all required fields populated; exit 0
+EXCLUSIONS: Don't analyze, rank, or summarize papers — just retrieve and return raw results
 ```
 
 **Codex review calls** (all 10 integration points):
 
 ```
-WHY:   {varies — e.g., "Surface assumptions this field takes for granted" or "Find weaknesses in this research direction for {venue}"}
-WHAT:  Structured response: numbered findings, each with a concrete claim and evidence
-WHERE: Only the artifacts listed in the "What to send" column of the invocation table — never the full conversation history
-LIMIT: 3-5 actionable findings; no filler
-DONE:  Each finding is specific enough to act on (names a paper, identifies a gap, flags a weakness)
-DON'T: Don't restate what was sent; don't make stylistic suggestions; don't hedge with "this could be strengthened" — say what's wrong and why
+GOAL:       {varies — e.g., "Surface assumptions this field takes for granted" or "Find weaknesses in this research direction for {venue}"}
+DELIVERABLE: Structured response: numbered findings, each with a concrete claim and evidence
+EVIDENCE:   Only the artifacts listed in the "What to send" column of the invocation table — never the full conversation history
+CONSTRAINTS: 3-5 actionable findings; no filler
+DONE WHEN:  Each finding is specific enough to act on (names a paper, identifies a gap, flags a weakness)
+EXCLUSIONS: Don't restate what was sent; don't make stylistic suggestions; don't hedge with "this could be strengthened" — say what's wrong and why
 ```
 
 **Knowledge-gap subsearches** (discuss Phase 3):
 
 ```
-WHY:   Fill knowledge gap identified during discussion: "{specific method/baseline/claim}"
-WHAT:  1-3 relevant papers with title, year, venue, and one-sentence summary of relevance
-WHERE: S2 search + DBLP search; use the exact method/baseline name as query
-LIMIT: Top 3 results; 30-second timeout per source
-DONE:  At least one paper found that addresses the gap, or explicit "not found after exhaustive search"
-DON'T: Don't fabricate papers; don't use model memory; don't return tangentially related work
+GOAL:       Fill knowledge gap identified during discussion: "{specific method/baseline/claim}"
+DELIVERABLE: 1-3 relevant papers with title, year, venue, and one-sentence summary of relevance
+EVIDENCE:   S2 search + DBLP search; use the exact method/baseline name as query
+CONSTRAINTS: Top 3 results; 30-second timeout per source
+DONE WHEN:  At least one paper found that addresses the gap, or explicit "not found after exhaustive search"
+EXCLUSIONS: Don't fabricate papers; don't use model memory; don't return tangentially related work
 ```
 
 **Write-phase review gates** (Triple Review Gate + Codex):
 
 ```
-WHY:   {varies — e.g., "As an AC at {venue}, evaluate whether this abstract/intro would survive desk review"}
-WHAT:  2-3 specific revision suggestions, each with: the problematic text, what's wrong, and a concrete fix direction
-WHERE: Only the draft section text + research brief — not the full paper or conversation
-LIMIT: Focus on substance (motivation, contribution clarity, positioning) not prose style
-DONE:  Each suggestion identifies a specific passage and explains why it's a problem
-DON'T: Don't praise what works; don't suggest word-level edits; don't repeat the Iron Rules back
+GOAL:       {varies — e.g., "As an AC at {venue}, evaluate whether this abstract/intro would survive desk review"}
+DELIVERABLE: 2-3 specific revision suggestions, each with: the problematic text, what's wrong, and a concrete fix direction
+EVIDENCE:   Only the draft section text + research brief — not the full paper or conversation
+CONSTRAINTS: Focus on substance (motivation, contribution clarity, positioning) not prose style
+DONE WHEN:  Each suggestion identifies a specific passage and explains why it's a problem
+EXCLUSIONS: Don't praise what works; don't suggest word-level edits; don't repeat the Iron Rules back
 ```
 
 ### When to skip
 
-Not every delegation needs full formality. Skip the contract for:
+Not every delegation needs full formality. Skip the brief for:
 - Single-script calls (`venue_info.sh`, `ccf_lookup.sh`) — these have fixed I/O
 - Clarificational Codex turns in discuss Phase 3 where the user is providing context
 - Trending phase (simple, no delegation)
@@ -415,7 +465,6 @@ All scripts are in `skills/research/scripts/`. Key scripts:
 ## Dependencies
 
 ### Required skills/plugins
-- `pua` / `pua-en` from `tanwei/pua` — pressure escalation when stuck (see PUA Pressure Escalation section for trigger conditions). The Delegation Contract schema is borrowed from `pua:p9` Task Prompt pattern.
 - `ml-paper-writing` from `Orchestra-Research AI-Research-SKILLs` — paper structure for write phase
 - `brainstorming-research-ideas` from `Orchestra-Research AI-Research-SKILLs` — search strategy and ideation
 - `creative-thinking-for-research` from `Orchestra-Research AI-Research-SKILLs` — cognitive frameworks for novel ideas
@@ -424,8 +473,8 @@ All scripts are in `skills/research/scripts/`. Key scripts:
 - `superpowers:dispatching-parallel-agents` — parallel search in discover phase
 - `superpowers:verification-before-completion` — output verification in cite/write/discover phases
 
-### Required MCP servers
-- **Codex MCP** (`mcp__codex__codex`) — cross-model collaboration throughout the lifecycle (discuss Phases 2-9, write Step 5.5 + 5.6). See Cross-Model Collaboration section for all 10 invocation points. If Codex MCP is unavailable, all phases proceed with Claude-only analysis (log warning).
+### Optional MCP servers
+- **Codex MCP** (`mcp__codex__codex`) — cross-model collaboration throughout the lifecycle (discuss Phases 2-9, write Step 5.5 + 5.6). See Cross-Model Collaboration section for all 10 invocation points. If unavailable, all phases proceed with Claude-only analysis (log warning). Recommended but not blocking.
 
 ### Required API keys
 - **Semantic Scholar**: set `S2_API_KEY` in `.claude/settings.json` under `"env"`. Claude Code automatically exports it as `$S2_API_KEY`. Get from: https://www.semanticscholar.org/product/api/api-key
@@ -440,25 +489,16 @@ If dependencies are missing on first use:
 ```
 Before using /research, please ensure:
 
-1. Install plugins:
-   - tanwei/pua (provides pua, pua-en skills)
+1. Install required skills/plugins:
    - Orchestra-Research AI-Research-SKILLs (provides ml-paper-writing, brainstorming-research-ideas, creative-thinking-for-research, and 21 domain skill categories)
    - humanizer skill
 
 2. Install hf CLI:
    curl -LsSf https://hf.co/cli/install.sh | bash -s
 
-3. Set up API keys in your `.claude/settings.json`:
-   ```json
-   {
-     "env": {
-       "S2_API_KEY": "your-key-here",
-       "OPENREVIEW_USER": "optional",
-       "OPENREVIEW_PASS": "optional"
-     }
-   }
-   ```
-   Claude Code automatically exports `env` entries as environment variables.
+3. Set up API keys in your .claude/settings.json:
+   { "env": { "S2_API_KEY": "your-key-here", "OPENREVIEW_USER": "optional", "OPENREVIEW_PASS": "optional" } }
+   Claude Code automatically exports env entries as environment variables.
    - Semantic Scholar: https://www.semanticscholar.org/product/api/api-key
    - OpenReview (optional): https://openreview.net/profile
 ```

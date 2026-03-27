@@ -139,7 +139,6 @@ git clone https://github.com/arsity/scholar-tools.git ~/.claude/plugins/scholar-
    Claude Code automatically exports `env` entries as environment variables — scripts read `$S2_API_KEY` directly.
 
 2. **Required plugins:**
-   - `tanwei/pua` — provides `pua` and `pua-en` skills
    - `Orchestra-Research/AI-Research-SKILLs` — provides `ml-paper-writing`, `brainstorming-research-ideas`, `creative-thinking-for-research`, and 21 domain skill categories
    - A `humanizer` skill for style review during paper writing
 
@@ -240,14 +239,16 @@ On first invocation, `/research` creates `.research-workspace/` in the current d
 
 1. **Zero hallucination citations** — every citation from an API call, never from model memory
 2. **BibTeX priority** — DBLP > CrossRef > S2
-3. **PUA pressure escalation** — invoke `pua`/`pua-en` when stuck, drives exhaustive search and retry
+3. **Exhaustive search escalation** — when a retrieval task has no directly relevant results after the applicable primary searches, follow the Search Escalation Protocol before accepting "not found"
 4. **Quality gate** — no paper presented without quality evaluation
 5. **Source tracing** — every citation tagged with data source
 6. **Own model for analysis** — never rely on AlphaXiv's AI-generated answers
 7. **Domain skill grounding** — factual claims must trace to paper content, not skill-generated assertions
 8. **Adversarial before commitment** — no direction finalized without novelty check
-9. **Triple review for framing** — abstract and introduction must pass three review perspectives
+9. **Multi-perspective review for framing** — abstract/intro must pass reviewer, AC/SAC, and senior researcher perspectives + cross-model gate; related-work must pass coverage & fairness check
 10. **Simplicity preference** — between two approaches of similar merit, prefer the simpler one
+11. **Verify before completion** — run verification before claiming output is done
+12. **Root cause before retry** — diagnose failures before retrying
 
 ## Rate limits
 

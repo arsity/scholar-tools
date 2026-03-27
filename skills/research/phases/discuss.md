@@ -68,7 +68,7 @@ Per Cross-Model Collaboration #2 in SKILL.md, Codex joins the discussion as an o
   - Quick-read the found paper to fill the gap
 - User questions a conclusion without comparison data → targeted read of the comparison paper
 - Domain skill suggests related work → supplementary discover with `s2_search.sh`
-- **If a knowledge-gap search returns 0 results**: apply Iron Rule 12 (root cause before retry) — diagnose whether the query is too specific, the method name has alternate spellings, or the paper is too new for S2 indexing. If the search still fails after diagnosis, trigger PUA escalation per the PUA Pressure Escalation table in SKILL.md.
+- **If a knowledge-gap search returns 0 results**: apply Iron Rule #12 (root cause before retry) — diagnose whether the query is too specific, the method name has alternate spellings, or the paper is too new for S2 indexing. If the search still fails after diagnosis, follow the Search Escalation Protocol in SKILL.md — classify the failure type, then work through the strategy ladder before accepting "not found."
 
 **Knowledge gap quick-reads** (cache-aware): Check `cache/{paper_id}/overview.md` first. On cache miss, fetch `curl -sL "https://alphaxiv.org/overview/{arxiv_id}.md"` and save to cache. If alphaxiv returns 404, fall back to S2 abstract or arXiv PDF (also cache the result). See Paper Cache in SKILL.md.
 

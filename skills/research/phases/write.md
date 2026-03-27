@@ -154,7 +154,7 @@ Before presenting the section to the user, invoke `superpowers:verification-befo
 - If related-work: the coverage & fairness check was completed (Claude-only is acceptable if Codex is unavailable, with warning logged)
 - If method/experiments/conclusion/discussion: the consistency check was completed
 
-Only proceed to presentation after all checks pass. If citation verification fails for >30% of references, trigger PUA escalation per Iron Rule.
+Only proceed to presentation after all checks pass. If citation verification fails for >30% of references, follow the Search Escalation Protocol per Iron Rule #3.
 
 ### Step 6: Present to user
 

@@ -106,20 +106,20 @@ All conventions below are derived from real bugs. See `CONTRIBUTING.md` for the 
 
 1. Zero hallucination citations — every citation from an API call
 2. BibTeX priority — DBLP > CrossRef > S2
-3. PUA pressure escalation when stuck (exhaustive retry before "not found")
+3. Exhaustive search escalation — when a retrieval task has no directly relevant results after the applicable primary searches, follow the Search Escalation Protocol before accepting "not found"
 4. Quality gate — no paper presented without venue/citation evaluation
 5. Source tracing — every citation tagged with data source
 6. Own model for analysis — never rely on AlphaXiv's AI summaries
 7. Domain skill grounding — claims trace to paper content, not skill assertions
 8. Adversarial before commitment — novelty check before finalizing direction
-9. Multi-perspective review for framing — abstract/intro pass three perspectives
+9. Multi-perspective review for framing — abstract/intro pass reviewer, AC/SAC, and senior researcher perspectives + cross-model gate; related-work passes coverage & fairness check
 10. Simplicity preference — prefer simpler approach when merit is similar
 11. Verify before completion — run verification before claiming output is done
 12. Root cause before retry — diagnose failures before retrying
 
 ### Cross-model collaboration
 
-Codex (via `mcp__codex__codex`) participates as co-thinker (divergent phases) and adversarial reviewer (convergent phases). Every Codex call follows the 6-element Delegation Contract (WHY/WHAT/WHERE/LIMIT/DONE/DON'T). Codex is never blocking — all phases work Claude-only if MCP is unavailable.
+Codex (via `mcp__codex__codex`) participates as co-thinker (divergent phases) and adversarial reviewer (convergent phases). Every Codex call follows the 6-element Task Brief (GOAL/DELIVERABLE/EVIDENCE/CONSTRAINTS/DONE WHEN/EXCLUSIONS). Codex is never blocking — all phases work Claude-only if MCP is unavailable.
 
 ### Pre-push checklist
 
